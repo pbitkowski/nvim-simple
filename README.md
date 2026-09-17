@@ -21,7 +21,7 @@ bootstrap script uses Homebrew (also available on Linux) to install the command
 line dependencies without touching an existing Neovim configuration.
 
 ```sh
-git clone https://github.com/pbitkowski/nvim-config.git "${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
+git clone https://github.com/pbitkowski/nvim-simple.git "${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
 "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/scripts/bootstrap.sh"
 ```
 
