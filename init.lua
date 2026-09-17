@@ -310,6 +310,11 @@ do
         return
       end
 
+      if name == 'peek.nvim' and vim.fn.executable 'deno' == 1 then
+        run_build(name, { 'deno', 'task', '--quiet', 'build:fast' }, ev.data.path)
+        return
+      end
+
       if name == 'nvim-treesitter' then
         if not ev.data.active then vim.cmd.packadd 'nvim-treesitter' end
         vim.cmd 'TSUpdate'
@@ -485,6 +490,85 @@ do
   -- cursor location to LINE:COLUMN
   ---@diagnostic disable-next-line: duplicate-set-field
   statusline.section_location = function() return '%2l:%-2v' end
+
+  -- Edit directories like normal buffers. Changes are only applied on :write.
+  vim.pack.add { gh 'stevearc/oil.nvim' }
+  local oil = require 'oil'
+  oil.setup {
+    default_file_explorer = true,
+    delete_to_trash = true,
+    skip_confirm_for_simple_edits = false,
+    view_options = {
+      show_hidden = false,
+      natural_order = 'fast',
+    },
+  }
+
+  -- Repair a rare Oil preview edge case where a real file buffer keeps the
+  -- explorer's `oil` filetype after it is opened in the same window.
+  vim.api.nvim_create_autocmd({ 'BufEnter', 'BufReadPost', 'BufWinEnter', 'BufFilePost' }, {
+    group = vim.api.nvim_create_augroup('kickstart-oil-filetype', { clear = true }),
+    callback = function(event)
+      local filename = vim.api.nvim_buf_get_name(event.buf)
+      if vim.bo[event.buf].buftype ~= '' or vim.bo[event.buf].filetype ~= 'oil' or filename:match '^oil://' then return end
+
+      local detected = vim.filetype.match { buf = event.buf, filename = filename }
+      if detected and detected ~= 'oil' then vim.bo[event.buf].filetype = detected end
+    end,
+  })
+
+  local function current_directory()
+    local oil_dir = oil.get_current_dir()
+    if oil_dir then return oil_dir end
+
+    local filename = vim.api.nvim_buf_get_name(0)
+    if filename ~= '' then return vim.fs.dirname(filename) end
+
+    return assert(vim.uv.cwd())
+  end
+
+  vim.keymap.set('n', '<leader>e', function() oil.open(current_directory()) end, { desc = '[E]xplore current directory' })
+  vim.keymap.set('n', '<leader>E', function()
+    local root = vim.fs.root(current_directory(), '.git') or vim.uv.cwd()
+    oil.open(root)
+  end, { desc = '[E]xplore project root' })
+
+  -- Live Markdown preview with Mermaid support.
+  vim.pack.add { gh 'toppair/peek.nvim' }
+  local peek = require 'peek'
+  peek.setup {
+    auto_load = false,
+    close_on_bdelete = true,
+    theme = 'dark',
+    update_on_change = true,
+    app = 'webview',
+  }
+
+  vim.keymap.set('n', '<leader>mp', function()
+    if peek.is_open() then
+      peek.close()
+      return
+    end
+
+    -- When invoked from Oil, open the Markdown file under the cursor first.
+    if vim.bo.filetype == 'oil' then
+      local entry = oil.get_cursor_entry()
+      local directory = oil.get_current_dir()
+      if not entry or entry.type ~= 'file' or not directory then
+        vim.notify('Select a Markdown file in Oil before opening its preview.', vim.log.levels.WARN)
+        return
+      end
+      vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(directory, entry.name)))
+    end
+
+    if vim.bo.filetype ~= 'markdown' then
+      local current = vim.bo.filetype ~= '' and vim.bo.filetype or '<none>'
+      vim.notify(('Markdown preview requires a Markdown buffer; current filetype is %s.'):format(current), vim.log.levels.WARN)
+      return
+    end
+
+    peek.open()
+  end, { desc = '[M]arkdown [P]review' })
 
   -- ... and there is more!
   --  Check out: https://github.com/nvim-mini/mini.nvim
