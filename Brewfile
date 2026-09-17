@@ -1,0 +1,8 @@
+brew "neovim"
+brew "ripgrep"
+brew "fd"
+brew "tree-sitter"
+brew "tree-sitter-cli"
+brew "deno"
+brew "go"
+brew "node"
