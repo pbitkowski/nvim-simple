@@ -315,6 +315,15 @@ do
         return
       end
 
+      if name == 'cursortab.nvim' then
+        if vim.fn.executable 'go' == 1 then
+          run_build(name, { 'go', 'build' }, vim.fs.joinpath(ev.data.path, 'server'))
+        else
+          vim.notify('CursorTab needs Go 1.25 or newer to build.', vim.log.levels.ERROR)
+        end
+        return
+      end
+
       if name == 'nvim-treesitter' then
         if not ev.data.active then vim.cmd.packadd 'nvim-treesitter' end
         vim.cmd 'TSUpdate'
@@ -825,14 +834,26 @@ do
   local servers = {
     -- clangd = {},
     -- gopls = {},
-    -- pyright = {},
-    -- tsc = {},
     --
     -- Some languages (like rust) have entire language plugins that can be useful:
     --    https://github.com/mrcjkb/rustaceanvim
     --
     -- But for many setups, the LSP (`rust_analyzer`) will work just fine
     -- rust_analyzer = {},
+
+    ty = {}, -- Python
+    ts_ls = {}, -- TypeScript and JavaScript
+    astro = { -- Astro components and pages
+      before_init = function(_, config)
+        -- Prefer the project's TypeScript SDK, then use the one bundled by Mason.
+        local typescript = require 'mason-lspconfig.typescript'
+        local install_dir = vim.fn.expand '$MASON/packages/astro-language-server'
+        config.init_options = config.init_options or {}
+        config.init_options.typescript = config.init_options.typescript or {}
+        config.init_options.typescript.serverPath = typescript.resolve_tsserver(install_dir, config.root_dir)
+        config.init_options.typescript.tsdk = typescript.resolve_tsdk(install_dir, config.root_dir)
+      end,
+    },
 
     stylua = {}, -- Used to format Lua code
 
@@ -1022,6 +1043,40 @@ do
     -- Shows a signature help window while you type arguments for a function
     signature = { enabled = true },
   }
+
+  -- Cursor-like next-edit predictions through the hosted Mercury API.
+  -- Skip the plugin entirely on machines where the token is unavailable.
+  if vim.env.MERCURY_API_TOKEN and vim.env.MERCURY_API_TOKEN ~= '' then
+    vim.pack.add { gh 'cursortab/cursortab.nvim' }
+    vim.keymap.set('n', '<leader>tc', function()
+      local cursortab = require 'cursortab'
+      if vim.fn.exists ':CursortabToggle' == 0 then
+        cursortab.setup {
+          enabled = true,
+          contribute_data = false,
+          keymaps = {
+            accept = '<C-l>',
+            partial_accept = false,
+            trigger = false,
+          },
+          ui = {
+            jump = { text = ' CTRL-L ' },
+          },
+          behavior = {
+            ignore_filetypes = { '', 'terminal', 'oil', 'TelescopePrompt', 'NeogitStatus', 'gitcommit' },
+          },
+          provider = {
+            type = 'mercuryapi',
+            api_key_env = 'MERCURY_API_TOKEN',
+            privacy_mode = true,
+          },
+        }
+        vim.notify('CursorTab enabled', vim.log.levels.INFO)
+      else
+        cursortab.toggle()
+      end
+    end, { desc = '[T]oggle [C]ursorTab' })
+  end
 end
 
 -- ============================================================
