@@ -521,6 +521,24 @@ do
   vim.pack.add { gh 'folke/todo-comments.nvim' }
   require('todo-comments').setup { signs = false }
 
+  -- Render color literals as their actual color instead of plain text.
+  vim.pack.add { gh 'brenoprata10/nvim-highlight-colors' }
+  local highlight_colors = require 'nvim-highlight-colors'
+  highlight_colors.setup {
+    render = 'background',
+    enable_named_colors = false,
+    enable_ansi = false,
+    enable_xterm256 = false,
+    enable_xtermTrueColor = false,
+    exclude_filetypes = { 'help', 'oil', 'TelescopePrompt', 'NeogitStatus' },
+    exclude_buftypes = { 'nofile', 'prompt', 'terminal' },
+    exclude_buffer = function(bufnr)
+      local filename = vim.api.nvim_buf_get_name(bufnr)
+      return filename ~= '' and vim.fn.getfsize(filename) > 1024 * 1024
+    end,
+  }
+  vim.keymap.set('n', '<leader>tC', highlight_colors.toggle, { desc = '[T]oggle [C]olor previews' })
+
   -- [[ mini.nvim ]]
   --  A collection of various small independent plugins/modules
   vim.pack.add { gh 'nvim-mini/mini.nvim' }
