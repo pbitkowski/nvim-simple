@@ -255,6 +255,12 @@ do
   vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
   vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
+  -- Fast buffer navigation that matches Neovim's other bracket motions.
+  vim.keymap.set('n', '[b', '<cmd>bprevious<CR>', { desc = 'Previous [B]uffer' })
+  vim.keymap.set('n', ']b', '<cmd>bnext<CR>', { desc = 'Next [B]uffer' })
+  vim.keymap.set('n', '<leader>w', '<cmd>write<CR>', { desc = '[W]rite buffer' })
+  vim.keymap.set('n', '<leader>bd', function() require('mini.bufremove').delete(0, false) end, { desc = '[B]uffer [D]elete' })
+
   -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
   -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
   -- vim.keymap.set("n", "<C-S-l>", "<C-w>L", { desc = "Move window to the right" })
@@ -442,6 +448,8 @@ do
   vim.pack.add { gh 'NeogitOrg/neogit' }
   require('neogit').setup {}
   vim.keymap.set('n', '<leader>gg', '<cmd>Neogit<CR>', { desc = '[G]it status (Neogit)' })
+  vim.keymap.set('n', '<leader>gl', '<cmd>NeogitLogCurrent<CR>', { desc = '[G]it [L]og current file' })
+  vim.keymap.set('n', '<leader>gL', function() require('neogit').action('log', 'log_current')() end, { desc = '[G]it [L]og current branch' })
 
   -- Useful plugin to show you pending keybinds.
   vim.pack.add { gh 'folke/which-key.nvim' }
@@ -452,6 +460,7 @@ do
     -- Document existing key chains
     spec = {
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
+      { '<leader>b', group = '[B]uffer' },
       { '<leader>t', group = '[T]oggle' },
       { '<leader>g', group = '[G]it' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
@@ -586,6 +595,81 @@ do
     },
     footer = '<leader>sk  keymaps',
   }
+
+  -- Persist one session per Git worktree. The absolute worktree path is part
+  -- of the name, so a feature branch, bugfix, and PR review never collide.
+  vim.opt.sessionoptions = { 'buffers', 'curdir', 'folds', 'localoptions', 'tabpages', 'winsize', 'winpos' }
+
+  local sessions = require 'mini.sessions'
+  sessions.setup {
+    autoread = false,
+    autowrite = false,
+    verbose = { read = false, write = false, delete = true },
+  }
+
+  local function worktree_session()
+    local cwd = assert(vim.uv.cwd())
+    local root = vim.fs.root(cwd, '.git')
+    if not root then return nil, nil end
+
+    local project = vim.fs.basename(root):gsub('[^%w%._-]', '_')
+    local fingerprint = vim.fn.sha256(root):sub(1, 12)
+    return ('%s-%s.vim'):format(project, fingerprint), root
+  end
+
+  local function started_for_project()
+    local args = vim.fn.argv()
+    if #args == 0 then return true end
+
+    for _, arg in ipairs(args) do
+      local path = vim.fn.fnamemodify(arg, ':p')
+      local stat = vim.uv.fs_stat(path)
+      if not stat or stat.type ~= 'directory' then return false end
+    end
+
+    return true
+  end
+
+  vim.api.nvim_create_user_command('ProjectSessionSave', function()
+    local name = worktree_session()
+    if not name then
+      vim.notify('No Git worktree found for the current directory.', vim.log.levels.WARN)
+      return
+    end
+    sessions.write(name, { force = true, verbose = true })
+  end, { desc = 'Save the session for this Git worktree' })
+
+  vim.api.nvim_create_user_command('ProjectSessionRestore', function()
+    local name = worktree_session()
+    if not name or not sessions.detected[name] then
+      vim.notify('No saved session exists for this Git worktree.', vim.log.levels.WARN)
+      return
+    end
+    sessions.read(name, { force = false, verbose = true })
+  end, { desc = 'Restore the session for this Git worktree' })
+
+  local automatic_session = false
+  local session_name, session_root = worktree_session()
+  vim.api.nvim_create_autocmd('VimEnter', {
+    group = vim.api.nvim_create_augroup('worktree-session', { clear = true }),
+    nested = true,
+    callback = function()
+      if #vim.api.nvim_list_uis() == 0 or not session_name or not started_for_project() then return end
+
+      automatic_session = true
+      if sessions.detected[session_name] then
+        sessions.read(session_name, { force = false, verbose = false })
+        vim.notify(('Restored session for %s'):format(vim.fs.basename(session_root)))
+      end
+    end,
+  })
+
+  vim.api.nvim_create_autocmd('VimLeavePre', {
+    group = 'worktree-session',
+    callback = function()
+      if automatic_session then sessions.write(session_name, { force = true, verbose = false }) end
+    end,
+  })
 
   vim.api.nvim_create_autocmd('FileType', {
     group = vim.api.nvim_create_augroup('hacker-ui-disable-indentscope', { clear = true }),
@@ -755,7 +839,7 @@ do
   local builtin = require 'telescope.builtin'
   vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
   vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
-  vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
+  vim.keymap.set('n', '<leader>sf', function() builtin.find_files { hidden = true } end, { desc = '[S]earch [F]iles (including dotfiles)' })
   vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
   vim.keymap.set({ 'n', 'v' }, '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
   vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
@@ -1034,35 +1118,137 @@ end
 do
   -- [[ Formatting ]]
   vim.pack.add { gh 'stevearc/conform.nvim' }
-  require('conform').setup {
-    notify_on_error = false,
-    format_on_save = function(bufnr)
-      -- You can specify filetypes to autoformat on save here:
-      local enabled_filetypes = {
-        -- lua = true,
-        -- python = true,
-      }
-      if enabled_filetypes[vim.bo[bufnr].filetype] then
-        return { timeout_ms = 500 }
-      else
-        return nil
-      end
-    end,
+
+  local function buffer_directory(bufnr)
+    local filename = vim.api.nvim_buf_get_name(bufnr)
+    return filename ~= '' and vim.fs.dirname(filename) or assert(vim.uv.cwd())
+  end
+
+  local function find_project_file(bufnr, names)
+    return vim.fs.find(names, {
+      path = buffer_directory(bufnr),
+      upward = true,
+      stop = vim.uv.os_homedir(),
+    })[1]
+  end
+
+  local function project_file_contains(bufnr, filename, pattern)
+    local path = find_project_file(bufnr, { filename })
+    if not path then return false end
+
+    local ok, lines = pcall(vim.fn.readfile, path)
+    return ok and table.concat(lines, '\n'):find(pattern) ~= nil
+  end
+
+  local function package_has(bufnr, dependency)
+    local path = find_project_file(bufnr, { 'package.json' })
+    if not path then return false end
+
+    local ok, lines = pcall(vim.fn.readfile, path)
+    if not ok then return false end
+
+    local decoded, package = pcall(vim.json.decode, table.concat(lines, '\n'))
+    if not decoded or type(package) ~= 'table' then return false end
+
+    for _, field in ipairs { 'dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies' } do
+      if type(package[field]) == 'table' and package[field][dependency] then return true end
+    end
+    return package[dependency] ~= nil
+  end
+
+  local prettier_configs = {
+    '.prettierrc',
+    '.prettierrc.json',
+    '.prettierrc.json5',
+    '.prettierrc.yaml',
+    '.prettierrc.yml',
+    '.prettierrc.js',
+    '.prettierrc.cjs',
+    '.prettierrc.mjs',
+    '.prettierrc.ts',
+    '.prettierrc.toml',
+    'prettier.config.js',
+    'prettier.config.cjs',
+    'prettier.config.mjs',
+    'prettier.config.ts',
+  }
+
+  local function web_formatters(bufnr)
+    if find_project_file(bufnr, { 'biome.json', 'biome.jsonc' }) or package_has(bufnr, '@biomejs/biome') then return { 'biome' } end
+    if find_project_file(bufnr, { 'deno.json', 'deno.jsonc' }) then return { 'deno_fmt' } end
+    if find_project_file(bufnr, prettier_configs) or package_has(bufnr, 'prettier') then return { 'prettierd', 'prettier', stop_after_first = true } end
+    return {}
+  end
+
+  local function python_formatters(bufnr)
+    local ruff_config = find_project_file(bufnr, { 'ruff.toml', '.ruff.toml' })
+    if
+      project_file_contains(bufnr, 'pyproject.toml', '%[tool%.ruff%.format%]')
+      or (ruff_config and project_file_contains(bufnr, vim.fs.basename(ruff_config), '%[format%]'))
+    then
+      return { 'ruff_format' }
+    end
+    if project_file_contains(bufnr, 'pyproject.toml', '%[tool%.black') then return { 'black' } end
+    if find_project_file(bufnr, { '.style.yapf' }) or project_file_contains(bufnr, 'pyproject.toml', '%[tool%.yapf') then return { 'yapf' } end
+    if project_file_contains(bufnr, 'pyproject.toml', '%[tool%.autopep8') then return { 'autopep8' } end
+    return {}
+  end
+
+  local conform = require 'conform'
+  conform.setup {
+    notify_on_error = true,
+    notify_no_formatters = true,
     default_format_opts = {
-      lsp_format = 'fallback', -- Use external formatters if configured below, otherwise use LSP formatting. Set to `false` to disable LSP formatting entirely.
+      lsp_format = 'fallback',
     },
-    -- You can also specify external formatters in here.
     formatters_by_ft = {
-      -- rust = { 'rustfmt' },
-      -- Conform can also run multiple formatters sequentially
-      -- python = { "isort", "black" },
-      --
-      -- You can use 'stop_after_first' to run the first available formatter from the list
-      -- javascript = { "prettierd", "prettier", stop_after_first = true },
+      astro = web_formatters,
+      css = web_formatters,
+      graphql = web_formatters,
+      html = web_formatters,
+      javascript = web_formatters,
+      javascriptreact = web_formatters,
+      json = web_formatters,
+      jsonc = web_formatters,
+      less = web_formatters,
+      markdown = web_formatters,
+      scss = web_formatters,
+      svelte = web_formatters,
+      typescript = web_formatters,
+      typescriptreact = web_formatters,
+      vue = web_formatters,
+      yaml = web_formatters,
+      python = python_formatters,
+      lua = { 'stylua' },
+      go = { 'gofmt' },
+      rust = { 'rustfmt' },
     },
   }
 
-  vim.keymap.set({ 'n', 'v' }, '<leader>f', function() require('conform').format { async = true } end, { desc = '[F]ormat buffer' })
+  vim.api.nvim_create_user_command('Format', function(args)
+    local range
+    if args.range > 0 then
+      local end_line = vim.api.nvim_buf_get_lines(0, args.line2 - 1, args.line2, false)[1] or ''
+      range = {
+        start = { args.line1, 0 },
+        ['end'] = { args.line2, #end_line },
+      }
+    end
+
+    local formatters, use_lsp = conform.list_formatters_to_run(0)
+    local names = vim.tbl_map(function(formatter) return formatter.name end, formatters)
+    if use_lsp then table.insert(names, 'LSP') end
+    if #names == 0 then
+      vim.notify('No project-configured formatter or formatting LSP is available. Run :ConformInfo for details.', vim.log.levels.WARN)
+      return
+    end
+
+    vim.notify('Formatting with ' .. table.concat(names, ', '))
+    conform.format { async = true, bufnr = 0, range = range, lsp_format = 'fallback' }
+  end, { desc = 'Format with the project-configured formatter', range = true })
+
+  vim.keymap.set('n', '<leader>f', '<cmd>Format<CR>', { desc = '[F]ormat buffer' })
+  vim.keymap.set('x', '<leader>f', ':Format<CR>', { desc = '[F]ormat selection' })
 end
 
 -- ============================================================
