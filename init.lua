@@ -1019,7 +1019,16 @@ do
   ---@type table<string, vim.lsp.Config>
   local servers = {
     -- clangd = {},
-    -- gopls = {},
+    gopls = {
+      settings = {
+        gopls = {
+          -- Keep completions ergonomic without enabling the full, heavier
+          -- Staticcheck suite. Modern gopls enables a fast curated subset.
+          usePlaceholders = true,
+          gofumpt = true,
+        },
+      },
+    },
     --
     -- Some languages (like rust) have entire language plugins that can be useful:
     --    https://github.com/mrcjkb/rustaceanvim
@@ -1100,7 +1109,7 @@ do
   -- You can press `g?` for help in this menu.
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
-    -- You can add other tools here that you want Mason to install
+    'goimports',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -1220,7 +1229,8 @@ do
       yaml = web_formatters,
       python = python_formatters,
       lua = { 'stylua' },
-      go = { 'gofmt' },
+      -- goimports applies gofmt and adds/removes/sorts imports.
+      go = { 'goimports', 'gofmt', stop_after_first = true },
       rust = { 'rustfmt' },
     },
   }
