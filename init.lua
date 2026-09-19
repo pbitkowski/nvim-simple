@@ -143,6 +143,10 @@ do
   -- Enable undo/redo changes even after closing and reopening a file
   vim.o.undofile = true
 
+  -- Reload clean buffers when another tool (for example Codex) edits them.
+  -- Neovim still protects buffers that contain unsaved local changes.
+  vim.o.autoread = true
+
   -- Case-insensitive searching UNLESS \C or one or more capital letters in the search term
   vim.o.ignorecase = true
   vim.o.smartcase = true
@@ -277,6 +281,17 @@ do
     desc = 'Highlight when yanking (copying) text',
     group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
     callback = function() vim.hl.on_yank() end,
+  })
+
+  -- Check file timestamps while moving between Herdr panes and buffers. This
+  -- catches agent edits even when the terminal multiplexer does not emit a
+  -- reliable FocusGained event.
+  vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI', 'TermLeave' }, {
+    desc = 'Reload files changed outside Neovim',
+    group = vim.api.nvim_create_augroup('kickstart-external-file-changes', { clear = true }),
+    callback = function()
+      if vim.fn.getcmdwintype() == '' then vim.cmd 'checktime' end
+    end,
   })
 end
 
