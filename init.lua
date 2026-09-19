@@ -718,15 +718,30 @@ do
 
   -- See `:help telescope` and `:help telescope.setup()`
   require('telescope').setup {
-    -- You can put your default mappings / updates / etc. in here
-    --  All the info you're looking for is in `:help telescope.setup()`
-    --
-    -- defaults = {
-    --   mappings = {
-    --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-    --   },
-    -- },
-    -- pickers = {}
+    defaults = {
+      -- Fill the screen on wide windows and stack preview/results when space
+      -- is tight, which works well on a 13-inch display with a larger font.
+      layout_strategy = 'flex',
+      sorting_strategy = 'ascending',
+      layout_config = {
+        width = 0.96,
+        height = 0.94,
+        flex = {
+          flip_columns = 120,
+        },
+        horizontal = {
+          prompt_position = 'top',
+          preview_width = 0.62,
+          preview_cutoff = 80,
+        },
+        vertical = {
+          prompt_position = 'top',
+          preview_height = 0.58,
+          preview_cutoff = 20,
+          mirror = true,
+        },
+      },
+    },
     extensions = {
       ['ui-select'] = { require('telescope.themes').get_dropdown() },
     },
