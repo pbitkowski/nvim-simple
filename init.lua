@@ -99,7 +99,7 @@ do
   vim.g.maplocalleader = ' '
 
   -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = false
+  vim.g.have_nerd_font = true
 
   -- [[ Setting options ]]
   --  See `:help vim.o`
@@ -108,9 +108,22 @@ do
 
   -- Make line numbers default
   vim.o.number = true
-  -- You can also add relative line numbers, to help with jumping.
-  --  Experiment for yourself to see if you like it!
-  -- vim.o.relativenumber = true
+  vim.o.relativenumber = true
+
+  -- High-contrast, compact UI chrome without changing editing behavior.
+  vim.o.winborder = 'rounded'
+  vim.o.laststatus = 3
+  vim.o.pumblend = 6
+  vim.o.smoothscroll = true
+  vim.o.cursorlineopt = 'number,line'
+  vim.opt.fillchars = {
+    eob = ' ',
+    fold = ' ',
+    foldopen = '',
+    foldclose = '',
+    foldsep = ' ',
+    diff = '╱',
+  }
 
   -- Enable mouse mode, can be useful for resizing splits for example!
   vim.o.mouse = 'a'
@@ -191,6 +204,14 @@ do
     update_in_insert = false,
     severity_sort = true,
     float = { border = 'rounded', source = 'if_many' },
+    signs = {
+      text = {
+        [vim.diagnostic.severity.ERROR] = '󰍚 ',
+        [vim.diagnostic.severity.WARN] = '󰱬 ',
+        [vim.diagnostic.severity.INFO] = '󰜋 ',
+        [vim.diagnostic.severity.HINT] = '󰍌 ',
+      },
+    },
     underline = { severity = { min = vim.diagnostic.severity.WARN } },
 
     -- Can switch between these as you prefer
@@ -368,11 +389,12 @@ do
   local gitsigns = require 'gitsigns'
   gitsigns.setup {
     signs = {
-      add = { text = '+' }, ---@diagnostic disable-line: missing-fields
-      change = { text = '~' }, ---@diagnostic disable-line: missing-fields
-      delete = { text = '_' }, ---@diagnostic disable-line: missing-fields
-      topdelete = { text = '‾' }, ---@diagnostic disable-line: missing-fields
-      changedelete = { text = '~' }, ---@diagnostic disable-line: missing-fields
+      add = { text = '▎' }, ---@diagnostic disable-line: missing-fields
+      change = { text = '▎' }, ---@diagnostic disable-line: missing-fields
+      delete = { text = '' }, ---@diagnostic disable-line: missing-fields
+      topdelete = { text = '' }, ---@diagnostic disable-line: missing-fields
+      changedelete = { text = '▎' }, ---@diagnostic disable-line: missing-fields
+      untracked = { text = '┆' }, ---@diagnostic disable-line: missing-fields
     },
     -- gitsigns.nvim's recommended keymaps:
     on_attach = function(bufnr)
@@ -446,9 +468,38 @@ do
   vim.pack.add { gh 'folke/tokyonight.nvim' }
   ---@diagnostic disable-next-line: missing-fields
   require('tokyonight').setup {
+    style = 'night',
+    transparent = true,
+    terminal_colors = true,
     styles = {
-      comments = { italic = false }, -- Disable italics in comments
+      comments = { italic = true },
+      keywords = { italic = true },
+      sidebars = 'transparent',
+      floats = 'transparent',
     },
+    on_colors = function(colors)
+      colors.green = '#39ff88'
+      colors.teal = '#00ffd5'
+    end,
+    on_highlights = function(highlights, colors)
+      highlights.CursorLineNr = { fg = colors.green, bold = true }
+      highlights.WinSeparator = { fg = colors.green }
+      highlights.FloatBorder = { fg = colors.teal, bg = colors.none }
+      highlights.Visual = { bg = '#17364a' }
+      highlights.Search = { fg = colors.bg, bg = colors.green, bold = true }
+      highlights.IncSearch = { fg = colors.bg, bg = colors.orange, bold = true }
+      highlights.MiniIndentscopeSymbol = { fg = colors.green }
+      highlights.MiniTablineCurrent = { fg = colors.bg, bg = colors.green, bold = true }
+      highlights.MiniTablineVisible = { fg = colors.teal, bg = colors.bg_highlight }
+      highlights.MiniTablineHidden = { fg = colors.fg_dark, bg = colors.bg_dark }
+      highlights.MiniTablineModifiedCurrent = { fg = colors.bg, bg = colors.orange, bold = true }
+      highlights.MiniTablineModifiedVisible = { fg = colors.orange, bg = colors.bg_highlight }
+      highlights.MiniTablineModifiedHidden = { fg = colors.orange, bg = colors.bg_dark }
+      highlights.MiniStatuslineModeNormal = { fg = colors.bg, bg = colors.green, bold = true }
+      highlights.MiniStarterHeader = { fg = colors.green, bold = true }
+      highlights.MiniStarterSection = { fg = colors.teal, bold = true }
+      highlights.MiniStarterCurrent = { fg = colors.bg, bg = colors.green, bold = true }
+    end,
   }
 
   -- Load the colorscheme here.
@@ -505,6 +556,42 @@ do
   -- cursor location to LINE:COLUMN
   ---@diagnostic disable-next-line: duplicate-set-field
   statusline.section_location = function() return '%2l:%-2v' end
+
+  -- Icon-aware buffers across the top and a neon guide for the active scope.
+  require('mini.tabline').setup {
+    show_icons = true,
+    tabpage_section = 'right',
+  }
+
+  require('mini.indentscope').setup {
+    symbol = '▏',
+    options = { try_as_border = true },
+  }
+
+  local starter = require 'mini.starter'
+  starter.setup {
+    header = [=[
+███╗   ██╗██╗   ██╗██╗███╗   ███╗
+████╗  ██║██║   ██║██║████╗ ████║
+██╔██╗ ██║██║   ██║██║██╔████╔██║
+██║╚██╗██║╚██╗ ██╔╝██║██║╚██╔╝██║
+██║ ╚████║ ╚████╔╝ ██║██║ ╚═╝ ██║
+╚═╝  ╚═══╝  ╚═══╝  ╚═╝╚═╝     ╚═╝
+
+       [ SYSTEM READY ]]=],
+    items = {
+      starter.sections.builtin_actions(),
+      starter.sections.recent_files(5, true),
+      starter.sections.recent_files(5, false),
+    },
+    footer = 'ACCESS GRANTED  //  <leader>sk lists every keymap',
+  }
+
+  vim.api.nvim_create_autocmd('FileType', {
+    group = vim.api.nvim_create_augroup('hacker-ui-disable-indentscope', { clear = true }),
+    pattern = { 'help', 'oil', 'TelescopePrompt', 'Trouble', 'lazy', 'mason', 'notify' },
+    callback = function() vim.b.miniindentscope_disable = true end,
+  })
 
   -- Edit directories like normal buffers. Changes are only applied on :write.
   vim.pack.add { gh 'stevearc/oil.nvim' }
