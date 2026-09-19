@@ -539,6 +539,25 @@ do
   }
   vim.keymap.set('n', '<leader>tC', highlight_colors.toggle, { desc = '[T]oggle [C]olor previews' })
 
+  -- Display real images through Ghostty's Kitty graphics protocol.
+  vim.pack.add { gh 'folke/snacks.nvim' }
+  local snacks = require 'snacks'
+  snacks.setup {
+    image = {
+      enabled = true,
+      doc = {
+        enabled = true,
+        inline = true,
+        float = true,
+        max_width = 60,
+        max_height = 30,
+      },
+      -- Keep this focused on images; math rendering needs extra TeX/Typst tools.
+      math = { enabled = false },
+    },
+  }
+  vim.keymap.set('n', '<leader>ip', snacks.image.hover, { desc = '[I]mage [P]review under cursor' })
+
   -- [[ mini.nvim ]]
   --  A collection of various small independent plugins/modules
   vim.pack.add { gh 'nvim-mini/mini.nvim' }
