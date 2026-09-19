@@ -18,6 +18,10 @@
       "rev": "53c336bd01afa9160935e4423a424c2adc8160be",
       "src": "https://github.com/cursortab/cursortab.nvim"
     },
+    "cyberdream.nvim": {
+      "rev": "39e1fda12c0704e01029b286a4c7e77e33a0c5cd",
+      "src": "https://github.com/scottmckendry/cyberdream.nvim"
+    },
     "fidget.nvim": {
       "rev": "9e0201673e08e997e7cf52afca5565c70bd117f3",
       "src": "https://github.com/j-hui/fidget.nvim"
