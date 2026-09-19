@@ -30,9 +30,17 @@
       "rev": "5eb287fdbd523c3a1b3d01f304f43570e73e259b",
       "src": "https://github.com/lewis6991/gitsigns.nvim"
     },
+    "goto-preview": {
+      "rev": "d2d6923c9b9e0e43f0b9b566f261a8b1ae016540",
+      "src": "https://github.com/rmagatti/goto-preview"
+    },
     "guess-indent.nvim": {
       "rev": "84a4987ff36798c2fc1169cbaff67960aed9776f",
       "src": "https://github.com/NMAC427/guess-indent.nvim"
+    },
+    "logger.nvim": {
+      "rev": "63dd10c9b9a159fd6cfe08435d9606384ff103c5",
+      "src": "https://github.com/rmagatti/logger.nvim"
     },
     "mason-lspconfig.nvim": {
       "rev": "77e06f7d2fc127e6ef0a720b59acbc50757cff19",

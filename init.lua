@@ -963,6 +963,23 @@ do
   vim.pack.add { gh 'j-hui/fidget.nvim' }
   require('fidget').setup {}
 
+  -- Inspect definitions in a floating window without leaving the current code.
+  vim.pack.add {
+    gh 'rmagatti/logger.nvim',
+    gh 'rmagatti/goto-preview',
+  }
+  local goto_preview = require 'goto-preview'
+  goto_preview.setup {
+    width = 100,
+    height = 20,
+    border = { '╭', '─', '╮', '│', '╯', '─', '╰', '│' },
+    default_mappings = false,
+    focus_on_open = true,
+    dismiss_on_move = false,
+    stack_floating_preview_windows = false,
+    preview_window_title = { enable = true, position = 'center' },
+  }
+
   --  This function gets run when an LSP attaches to a particular buffer.
   --    That is to say, every time a new file is opened that is associated with
   --    an lsp (for example, opening `main.rs` is associated with `rust_analyzer`) this
@@ -983,6 +1000,14 @@ do
       -- Rename the variable under your cursor.
       --  Most Language Servers support renaming across files, etc.
       map('grn', vim.lsp.buf.rename, '[R]e[n]ame')
+
+      -- Show documentation without leaving the current position. Press K a
+      -- second time to focus the popup so it can be scrolled normally.
+      map('K', function() vim.lsp.buf.hover { border = 'rounded', max_width = 88, max_height = 24 } end, '[H]over documentation')
+
+      -- Peek at a definition without replacing the current window.
+      map('gpd', goto_preview.goto_preview_definition, '[P]review [D]efinition')
+      map('gP', goto_preview.close_all_win, 'Close definition [P]reviews')
 
       -- Execute a code action, usually your cursor needs to be on top of an error
       -- or a suggestion from your LSP for this to activate.
