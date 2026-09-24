@@ -24,6 +24,11 @@ fi
 printf 'Installing command-line dependencies from Brewfile...\n'
 brew bundle --file="${repo_dir}/Brewfile"
 
+if ! command -v mmdc >/dev/null 2>&1; then
+  printf 'Installing Mermaid CLI and its headless browser for terminal diagrams...\n'
+  npm install -g @mermaid-js/mermaid-cli@11.17.0
+fi
+
 for build_command in make cc; do
   if ! command -v "${build_command}" >/dev/null 2>&1; then
     printf 'Missing build command: %s\n' "${build_command}" >&2

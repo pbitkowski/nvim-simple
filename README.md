@@ -9,7 +9,7 @@ stock Neovim while adding the things I use every day:
 - Gitsigns and Neogit for Git workflows
 - LSP support for Python (`ty`), TypeScript/JavaScript, Astro, and Lua
 - Completion, Treesitter highlighting, diagnostics, and formatting
-- Markdown preview through Peek, including Mermaid diagrams
+- Markdown preview inside the terminal through md-render.nvim, including Mermaid diagrams
 - Optional CursorTab predictions, loaded only when a Mercury API token exists
 
 The leader key is `Space`.
@@ -37,7 +37,33 @@ xcode-select --install
 
 Homebrew itself must already be installed. The script then installs the
 packages in `Brewfile`, starts Neovim once to fetch plugins, and installs the
-configured Mason tools.
+configured Mason tools. It also installs Mermaid CLI (`mmdc`) through npm,
+including the headless Chromium used to render diagrams locally.
+
+## Markdown preview
+
+Press `Space m p` in a Markdown buffer (or on a file in Oil) to toggle the
+terminal preview. Press `q` or `Esc` to close it. Use `:vert MdRender split`
+for a live preview beside the source, or `:MdRender demo` to explore rendering.
+
+[md-render.nvim](https://github.com/delphinus/md-render.nvim) renders Mermaid
+diagrams as images using [Mermaid CLI](https://github.com/mermaid-js/mermaid-cli).
+Use Ghostty, Kitty, or WezTerm for diagrams; other terminals can display the
+Markdown text but need graphics support for diagram images. With tmux, enable
+`set -g allow-passthrough on`. No browser window opens, but Mermaid CLI runs
+headless Chromium locally. Markview alone does not render Mermaid diagrams.
+
+For an existing installation, install the renderer once and restart Neovim:
+
+```sh
+npm install -g @mermaid-js/mermaid-cli@11.17.0
+```
+
+For a standalone terminal reader using this config:
+
+```sh
+nvim +'MdRender pager' README.md
+```
 
 ## Private configuration
 

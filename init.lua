@@ -352,11 +352,6 @@ do
         return
       end
 
-      if name == 'peek.nvim' and vim.fn.executable 'deno' == 1 then
-        run_build(name, { 'deno', 'task', '--quiet', 'build:fast' }, ev.data.path)
-        return
-      end
-
       if name == 'cursortab.nvim' then
         if vim.fn.executable 'go' == 1 then
           run_build(name, { 'go', 'build' }, vim.fs.joinpath(ev.data.path, 'server'))
@@ -752,20 +747,12 @@ do
     oil.open(root)
   end, { desc = '[E]xplore project root' })
 
-  -- Live Markdown preview with Mermaid support.
-  vim.pack.add { gh 'toppair/peek.nvim' }
-  local peek = require 'peek'
-  peek.setup {
-    auto_load = false,
-    close_on_bdelete = true,
-    theme = 'dark',
-    update_on_change = true,
-    app = 'webview',
-  }
+  -- Terminal Markdown preview; Mermaid images require Kitty graphics and mmdc.
+  vim.pack.add { gh 'delphinus/md-render.nvim' }
 
   vim.keymap.set('n', '<leader>mp', function()
-    if peek.is_open() then
-      peek.close()
+    if vim.b.md_render then
+      vim.cmd 'MdRender float'
       return
     end
 
@@ -786,7 +773,7 @@ do
       return
     end
 
-    peek.open()
+    vim.cmd 'MdRender float'
   end, { desc = '[M]arkdown [P]review' })
 
   -- ... and there is more!
